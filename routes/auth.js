@@ -1,9 +1,24 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const db = require('../db');
+const csurf = require('@dr.pogodin/csurf');
 
 const router = express.Router();
 const cookieName = process.env.SESSION_NAME || 'connect.sid';
+
+// Apply CSRF protection only to auth routes (minimizes impact on future API endpoints)
+router.use(csurf({ cookie: false }));
+
+// CSRF token endpoint for auth forms (no-cache)
+router.get('/csrf-token', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    return res.json({ csrfToken: req.csrfToken() });
+  } catch (err) {
+    console.error('Error generating CSRF token:', err);
+    return res.status(500).json({ error: 'Unable to generate CSRF token' });
+  }
+});
 
 // Registration
 router.post('/register', async (req, res) => {
@@ -75,8 +90,8 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Logout
-router.get('/logout', (req, res) => {
+// Logout — POST to avoid CSRF via img/src or link
+router.post('/logout', (req, res) => {
   req.session.destroy((err) => {
     const isProd = process.env.NODE_ENV === 'production';
     if (err) {
