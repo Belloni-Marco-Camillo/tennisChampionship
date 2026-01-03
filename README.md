@@ -57,7 +57,7 @@ API e pagine
 - `GET /register` - pagina di registrazione
 - `POST /register` - registra un nuovo utente
 - `POST /login` - effettua il login
-- `GET /logout` - logout
+- `POST /logout` - logout (use POST to avoid forced-logout via CSRF)
 - `GET /api/me` - ritorna stato login + info utente
 
 Note di sicurezza e prossimi passi
@@ -65,4 +65,29 @@ Note di sicurezza e prossimi passi
 - Per produzione: impostare `NODE_ENV=production`, fornire `SESSION_SECRET` forte e usare HTTPS.
 - Considera di usare `connect-pg-simple` (già installato) o un altro store per sessioni.
 - Valida meglio i campi lato server e client e aggiungi throttling/ratelimiting.
+ - Valida meglio i campi lato server e client e aggiungi throttling/ratelimiting.
+
+Rate limiting e lockout
+
+Questa app ora include middleware opzionali per proteggere gli endpoint di autenticazione.
+Abilita tramite variabili d'ambiente nel tuo `.env`:
+
+```
+# Rate limiting (per IP)
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX=10
+
+# Slowdown (adds delay after X requests)
+SLOW_DOWN_WINDOW_MS=60000
+SLOW_DOWN_DELAY_AFTER=5
+SLOW_DOWN_DELAY_MS=500
+
+# Account lockout (per email identifier) - optional
+LOCKOUT_ENABLED=1
+LOCKOUT_MAX_ATTEMPTS=5
+LOCKOUT_WINDOW_MS=900000
+LOCKOUT_DURATION_MS=900000
+```
+
+Dopo aver aggiornato `package.json` con le nuove dipendenze esegui `npm install`.
 # tennisChampionship

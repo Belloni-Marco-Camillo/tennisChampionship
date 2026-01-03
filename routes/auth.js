@@ -2,6 +2,14 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const db = require('../db');
 const csurf = require('@dr.pogodin/csurf');
+const {
+  authRateLimiter,
+  authSlowDown,
+  LOCKOUT_ENABLED,
+  checkLockoutMiddleware,
+  recordFailedLogin,
+  resetFailedLogin,
+} = require('../middleware/bruteforce');
 
 const router = express.Router();
 const cookieName = process.env.SESSION_NAME || 'connect.sid';
@@ -21,17 +29,22 @@ router.get('/csrf-token', (req, res) => {
 });
 
 // Registration
-router.post('/register', async (req, res) => {
+// Apply rate limiting and slowdown to registration to prevent abuse
+router.post('/register', authRateLimiter, authSlowDown, async (req, res) => {
   const { name, email, password } = req.body;
-  if (!email || !password) return res.status(400).send('Missing email or password');
+  const emailNorm = (email || '').trim().toLowerCase();
+  if (!emailNorm || !password) return res.status(400).send('Missing email or password');
   try {
-    const exists = await db.query('SELECT id FROM users WHERE email = $1', [email]);
-    if (exists.rows.length) return res.status(400).send('User already exists');
+    const exists = await db.query('SELECT id FROM users WHERE email = $1', [emailNorm]);
+    if (exists.rows.length) {
+      // Avoid user enumeration: return a generic message
+      return res.status(400).send('Registration failed');
+    }
 
     const hashed = await bcrypt.hash(password, 10);
     const result = await db.query(
       'INSERT INTO users(name, email, password_hash) VALUES($1, $2, $3) RETURNING id, name, email',
-      [name || null, email, hashed]
+      [name || null, emailNorm, hashed]
     );
 
     // Prevent session fixation: regenerate before assigning user id
@@ -57,16 +70,29 @@ router.post('/register', async (req, res) => {
 });
 
 // Login
-router.post('/login', async (req, res) => {
+// Login
+// Check account lockout first (if enabled), then rate-limit and slowdown per IP
+router.post('/login', checkLockoutMiddleware, authRateLimiter, authSlowDown, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).send('Missing email or password');
+  const emailNorm = (email || '').trim().toLowerCase();
   try {
-    const result = await db.query('SELECT id, name, email, password_hash FROM users WHERE email = $1', [email]);
-    if (!result.rows.length) return res.status(400).send('Invalid credentials');
+    const result = await db.query('SELECT id, name, email, password_hash FROM users WHERE email = $1', [emailNorm]);
+    if (!result.rows.length) {
+      // record failed attempt for this identifier
+      try { recordFailedLogin(emailNorm); } catch (e) { /* no-op */ }
+      return res.status(400).send('Invalid credentials');
+    }
 
     const user = result.rows[0];
     const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) return res.status(400).send('Invalid credentials');
+    if (!ok) {
+      try { recordFailedLogin(emailNorm); } catch (e) { /* no-op */ }
+      return res.status(400).send('Invalid credentials');
+    }
+
+    // Reset failed-attempts on successful login
+    try { resetFailedLogin(emailNorm); } catch (e) { /* no-op */ }
 
     // Prevent session fixation: regenerate session before assigning user id
     req.session.regenerate((err) => {

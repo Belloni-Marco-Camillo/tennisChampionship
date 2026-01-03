@@ -15,6 +15,8 @@
     "express": "^4.18.2",
     "express-session": "^1.17.3",
     "pg": "^8.10.0",
-    "helmet": "^6.0.1"
+    "helmet": "^6.0.1",
+    "express-rate-limit": "^6.7.0",
+    "express-slow-down": "^1.4.0"
   }
 }
