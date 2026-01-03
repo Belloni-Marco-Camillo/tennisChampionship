@@ -4,8 +4,8 @@
   "description": "Minimal web app with registration, login, and guest home.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node src/server.js",
+    "dev": "NODE_ENV=development node src/server.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",

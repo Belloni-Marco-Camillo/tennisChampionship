@@ -15,11 +15,18 @@ module.exports = function createApp(sessionMiddleware) {
 
   if (sessionMiddleware) app.use(sessionMiddleware);
 
-  // mount auth routes
-  const authRoutes = require('./routes/auth.routes');
-  app.use('/', authRoutes);
+  // mount web auth router and API router
+  const authWebRouter = require('./routes/auth.web.routes');
+  const apiRouter = require('./routes/api.routes');
+
+  app.use('/auth', authWebRouter);
+  app.use('/api', apiRouter);
+
+  // Compatibility: allow legacy CSRF token path for older clients
+  app.get('/csrf-token', (req, res) => res.redirect(302, '/auth/csrf-token'));
 
   // serve views routes (these are mounted by auth routes too, but keep here for parity)
+  // public views (still served at top-level paths for browser UX)
   app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'views', 'index.html')));
   app.get('/login', (req, res) => res.sendFile(path.join(__dirname, '..', 'views', 'login.html')));
   app.get('/register', (req, res) => res.sendFile(path.join(__dirname, '..', 'views', 'register.html')));
