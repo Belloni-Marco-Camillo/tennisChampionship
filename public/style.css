@@ -1,0 +1,8 @@
+body{font-family:Arial,Helvetica,sans-serif;background:#f6f7fb;color:#222;margin:0}
+.container{max-width:480px;margin:60px auto;padding:24px;background:#fff;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.06)}
+h1{margin-top:0}
+label{display:block;margin-top:12px;font-size:14px}
+input{width:100%;padding:8px;margin-top:6px;border:1px solid #ccc;border-radius:4px}
+button{margin-top:14px;padding:10px 14px;background:#0b74de;color:#fff;border:0;border-radius:6px;cursor:pointer}
+.links{margin-top:12px}
+.links a{margin-right:12px}

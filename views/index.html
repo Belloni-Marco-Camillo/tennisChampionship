@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Home - Tennis Championship</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <div class="container">
+      <h1>Tennis Championship</h1>
+      <div id="content">
+        <p>Caricamento stato utente…</p>
+      </div>
+      <div class="links">
+        <a href="/login">Login</a>
+        <a href="/register">Registrati</a>
+      </div>
+    </div>
+
+    <script>
+      async function fetchMe() {
+        const res = await fetch('/api/me');
+        const data = await res.json();
+        const el = document.getElementById('content');
+        if (data.loggedIn) {
+          el.innerHTML = `<p>Benvenuto, ${data.user.name || data.user.email}!</p><p><a href=\"/logout\">Logout</a></p>`;
+        } else {
+          el.innerHTML = `<p>Sei ospite. Effettua il <a href=\"/login\">login</a> o <a href=\"/register\">registrati</a>.</p>`;
+        }
+      }
+      fetchMe();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Registrazione - Tennis Championship</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <div class="container">
+      <h1>Registrati</h1>
+      <form method="post" action="/register">
+        <label>Name (opzionale)</label>
+        <input name="name" type="text" />
+        <label>Email</label>
+        <input name="email" type="email" required />
+        <label>Password</label>
+        <input name="password" type="password" required />
+        <button type="submit">Registrati</button>
+      </form>
+      <p><a href="/login">Hai già un account? Accedi</a></p>
+    </div>
+  </body>
+</html>
