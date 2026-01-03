@@ -89,6 +89,17 @@ app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'register.html'));
 });
 
+// CSRF error handler: friendly 403 when token invalid or missing
+app.use((err, req, res, next) => {
+  if (err && err.code === 'EBADCSRFTOKEN') {
+    // log the incident server-side
+    console.warn('CSRF token validation failed:', req.method, req.path);
+    // respond with a user-friendly message (no technical details)
+    return res.status(403).send('Richiesta non valida o scaduta. Ricarica la pagina e riprova.');
+  }
+  next(err);
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
