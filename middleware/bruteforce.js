@@ -35,15 +35,18 @@ const authSlowDown = slowDown({
 const attempts = new Map();
 
 function isLocked(identifier) {
-  const e = attempts.get(identifier);
+  if (!identifier) return false;
+  const id = String(identifier).trim().toLowerCase();
+  const e = attempts.get(id);
   if (!e) return false;
   return !!(e.lockedUntil && Date.now() < e.lockedUntil);
 }
 
 function recordFailedLogin(identifier) {
   if (!identifier) return;
+  const id = String(identifier).trim().toLowerCase();
   const now = Date.now();
-  let e = attempts.get(identifier);
+  let e = attempts.get(id);
   if (!e) e = { count: 0, firstAt: now, lockedUntil: null, timeoutId: null };
 
   // reset if firstAt outside window
@@ -59,24 +62,26 @@ function recordFailedLogin(identifier) {
   }
 
   if (e.timeoutId) clearTimeout(e.timeoutId);
-  e.timeoutId = setTimeout(() => attempts.delete(identifier), LOCKOUT_WINDOW_MS + LOCKOUT_DURATION_MS + 1000);
+  e.timeoutId = setTimeout(() => attempts.delete(id), LOCKOUT_WINDOW_MS + LOCKOUT_DURATION_MS + 1000);
 
-  attempts.set(identifier, e);
+  attempts.set(id, e);
 }
 
 function resetFailedLogin(identifier) {
   if (!identifier) return;
-  attempts.delete(identifier);
+  const id = String(identifier).trim().toLowerCase();
+  attempts.delete(id);
 }
 
 function checkLockoutMiddleware(req, res, next) {
   if (!LOCKOUT_ENABLED) return next();
-  const identifier = (req.body && req.body.email) ? String(req.body.email).trim().toLowerCase() : null;
+  const identifier = (req.body && req.body.email) ? req.body.email : null;
   if (!identifier) return next();
 
-  const e = attempts.get(identifier);
-  if (e && e.lockedUntil && Date.now() < e.lockedUntil) {
-    const secs = Math.ceil((e.lockedUntil - Date.now()) / 1000);
+  if (isLocked(identifier)) {
+    const id = String(identifier).trim().toLowerCase();
+    const e = attempts.get(id);
+    const secs = e && e.lockedUntil ? Math.ceil((e.lockedUntil - Date.now()) / 1000) : 60;
     res.set('Retry-After', String(Math.max(1, secs)));
     return res.status(429).send('Troppi tentativi su questo account. Riprova più tardi.');
   }
