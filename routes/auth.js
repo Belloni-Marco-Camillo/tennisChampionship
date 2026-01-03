@@ -10,6 +10,12 @@ const {
   recordFailedLogin,
   resetFailedLogin,
 } = require('../middleware/bruteforce');
+const {
+  normalizeEmail,
+  isValidEmail,
+  validatePassword,
+  sanitizeName,
+} = require('../utils/validation');
 
 const router = express.Router();
 const cookieName = process.env.SESSION_NAME || 'connect.sid';
@@ -32,8 +38,17 @@ router.get('/csrf-token', (req, res) => {
 // Apply rate limiting and slowdown to registration to prevent abuse
 router.post('/register', authRateLimiter, authSlowDown, async (req, res) => {
   const { name, email, password } = req.body;
-  const emailNorm = (email || '').trim().toLowerCase();
-  if (!emailNorm || !password) return res.status(400).send('Missing email or password');
+
+  const emailNorm = normalizeEmail(email);
+  if (!emailNorm) return res.status(400).send('Missing email');
+  if (!isValidEmail(emailNorm)) return res.status(400).send('Invalid email format');
+
+  const pwErr = validatePassword(password);
+  if (pwErr) return res.status(400).send(pwErr);
+
+  const { value: nameSan, error: nameErr } = sanitizeName(name);
+  if (nameErr) return res.status(400).send(nameErr);
+
   try {
     const exists = await db.query('SELECT id FROM users WHERE email = $1', [emailNorm]);
     if (exists.rows.length) {
@@ -44,7 +59,7 @@ router.post('/register', authRateLimiter, authSlowDown, async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const result = await db.query(
       'INSERT INTO users(name, email, password_hash) VALUES($1, $2, $3) RETURNING id, name, email',
-      [name || null, emailNorm, hashed]
+      [nameSan || null, emailNorm, hashed]
     );
 
     // Prevent session fixation: regenerate before assigning user id
@@ -74,8 +89,12 @@ router.post('/register', authRateLimiter, authSlowDown, async (req, res) => {
 // Check account lockout first (if enabled), then rate-limit and slowdown per IP
 router.post('/login', checkLockoutMiddleware, authRateLimiter, authSlowDown, async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).send('Missing email or password');
-  const emailNorm = (email || '').trim().toLowerCase();
+
+  const emailNorm = normalizeEmail(email);
+  if (!emailNorm) return res.status(400).send('Missing email');
+  if (!isValidEmail(emailNorm)) return res.status(400).send('Invalid email format');
+  const pwErr = validatePassword(password);
+  if (pwErr) return res.status(400).send(pwErr);
   try {
     const result = await db.query('SELECT id, name, email, password_hash FROM users WHERE email = $1', [emailNorm]);
     if (!result.rows.length) {
