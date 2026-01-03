@@ -154,17 +154,4 @@ router.post('/logout', (req, res) => {
   });
 });
 
-// Current user info (mounted under /api in server.js)
-router.get('/api/me', async (req, res) => {
-  if (!req.session.userId) return res.json({ loggedIn: false });
-  try {
-    const result = await db.query('SELECT id, name, email FROM users WHERE id = $1', [req.session.userId]);
-    if (!result.rows.length) return res.json({ loggedIn: false });
-    res.json({ loggedIn: true, user: result.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ loggedIn: false });
-  }
-});
-
 module.exports = router;

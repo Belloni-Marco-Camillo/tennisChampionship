@@ -6,11 +6,30 @@ window.injectCsrfTokens = async function() {
   try {
     let token = window._csrfCachedToken;
     if (!token) {
-      const resp = await fetch('/csrf-token', { credentials: 'same-origin' });
-      if (!resp.ok) return;
-      const data = await resp.json();
+      // Try primary path, then fallback to legacy path for compatibility
+      const paths = ['/auth/csrf-token', '/csrf-token'];
+      let data = null;
+      for (const p of paths) {
+        try {
+          console.debug('Fetching CSRF token from', p);
+          const resp = await fetch(p, { credentials: 'same-origin' });
+          if (!resp.ok) {
+            console.debug('CSRF token fetch failed for', p, 'status', resp.status);
+            continue;
+          }
+          data = await resp.json();
+          break;
+        } catch (inner) {
+          console.debug('CSRF token fetch error for', p, inner && inner.message);
+        }
+      }
       token = data && data.csrfToken;
-      if (token) window._csrfCachedToken = token;
+      if (token) {
+        window._csrfCachedToken = token;
+        console.debug('CSRF token acquired');
+      } else {
+        console.warn('CSRF token not acquired from any path');
+      }
     }
     if (!token) return;
     const forms = document.querySelectorAll('form');
@@ -24,7 +43,7 @@ window.injectCsrfTokens = async function() {
       form.appendChild(input);
     });
   } catch (e) {
-    console.error('Failed to fetch CSRF token', e);
+    console.error('Failed to fetch or inject CSRF token', e);
   }
 };
 
