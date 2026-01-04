@@ -10,12 +10,23 @@
     <div class="container">
       <h1>Registrati</h1>
       <form method="post" action="/auth/register">
-        <label>Name (opzionale)</label>
-        <input name="name" type="text" />
+        <label>Nome</label>
+        <input name="nome" type="text" required />
+
+        <label>Cognome</label>
+        <input name="cognome" type="text" required />
+
         <label>Email</label>
         <input name="email" type="email" required />
+
         <label>Password</label>
         <input name="password" type="password" required />
+
+        <label class="checkbox">
+          <input name="championship_owner" type="checkbox" value="1" />
+          Sono owner del campionato
+        </label>
+
         <button type="submit">Registrati</button>
       </form>
       <script src="/csrf.js"></script>
