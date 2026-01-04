@@ -1,5 +1,10 @@
 ### 📌 PROJECT AUDIT REPORT
 
+<!-- ✅ RISOLTO: Configurazione sessione + session fixation mitigata.
+- In `src/config/env.js`: in produzione fail-fast se `SESSION_SECRET` mancante o < 16.
+- In `src/config/session.js`: cookie sessione con `httpOnly`, `sameSite`, `secure` (in prod) e `saveUninitialized: false`.
+- In `routes/auth.js`: `req.session.regenerate()` su login e register.
+-->
 1) Titolo del problema: Configurazione delle sessioni non sicura per produzione
 Area coinvolta: Backend / Sicurezza
 Descrizione chiara del problema: `server.js` usa un valore di `SESSION_SECRET` di fallback e configura il cookie della sessione senza `secure`, `httpOnly` e `sameSite` espliciti; la rigenerazione della sessione dopo il login non viene eseguita.
@@ -8,6 +13,11 @@ Beneficio del miglioramento: Migliora significativamente la sicurezza delle sess
 Impatto del refactor: Basso — modifica concentrata in `server.js`/config sessione e comportamento login.
 Priorità: 🟥 Alta
 
+<!-- ✅ RISOLTO: CSRF aggiunto alle rotte auth.
+- In `routes/auth.js`: `csurf({ cookie: false })` applicato al router auth.
+- Endpoint token: `GET /auth/csrf-token` (più compat: `GET /csrf-token` redirect in `src/app.js`).
+- Frontend: `public/csrf.js` inietta automaticamente `_csrf` in tutti i form; caricato in `views/index.html`, `views/login.html`, `views/register.html`.
+-->
 2) Titolo del problema: Mancanza di protezione CSRF per endpoint POST
 Area coinvolta: Backend / Sicurezza / UX
 Descrizione chiara del problema: Le route che accettano POST (`/register`, `/login`) non hanno protezione CSRF (nessun token o meccanismo anti-CSRF).
@@ -16,6 +26,10 @@ Beneficio del miglioramento: Previene attacchi CSRF che potrebbero forzare azion
 Impatto del refactor: Medio — aggiunta di middleware CSRF e aggiornamento dei form/views per includere token.
 Priorità: 🟥 Alta
 
+<!-- ✅ RISOLTO: rate limiting + slowdown + lockout opzionale.
+- In `middleware/bruteforce.js`: `express-rate-limit`, `express-slow-down`, lockout in-memory (abilitabile via env).
+- In `routes/auth.js`: applicati su `POST /auth/register` e `POST /auth/login`.
+-->
 3) Titolo del problema: Assenza di rate limiting e protezione da brute-force
 Area coinvolta: Backend / Sicurezza
 Descrizione chiara del problema: Non esiste alcun throttling su endpoint di autenticazione né lockout per tentativi ripetuti.
@@ -24,6 +38,11 @@ Beneficio del miglioramento: Riduce drasticamente la probabilità di compromissi
 Impatto del refactor: Medio — integrazione di middleware (express-rate-limit) e logica per lockout o aumento delay.
 Priorità: 🟥 Alta
 
+<!-- ✅ RISOLTO (parziale) ⚠️
+- In `utils/validation.js`: `normalizeEmail`, `isValidEmail`, `validatePassword`, `sanitizeName`.
+- In `routes/auth.js`: usate su register/login.
+⚠️ Mancano ancora: validazione più completa lato client, uniformare messaggi/UX (es. render errori nelle views), e limiti più chiari (password policy) documentati.
+-->
 4) Titolo del problema: Mancata validazione e sanitizzazione input lato server
 Area coinvolta: Backend / Logica applicativa
 Descrizione chiara del problema: La validazione si limita a check di presenza; non si usano pattern di validazione (email formati, lunghezza password, caratteri) né librerie come `express-validator` o `Joi`.
@@ -32,6 +51,10 @@ Beneficio del miglioramento: Migliore qualità dei dati, messaggi di errore coer
 Impatto del refactor: Basso/Medio — aggiunta di validazione sui controller auth e possibili utility condivise.
 Priorità: 🟨 Media
 
+<!-- ✅ RISOLTO (parziale) ⚠️
+- In `src/config/session.js`: scelta esplicita store via `SESSION_STORE` (`pg` o `memory`), con controlli e fallback; con `pg` `createTableIfMissing: true`.
+⚠️ Mancano ancora: indicazioni operative nel README su `SESSION_STORE=pg`, nome tabella (`SESSION_PG_TABLE`), e chiarire che in produzione `DATABASE_URL` è richiesto se `SESSION_STORE=pg`.
+-->
 5) Titolo del problema: Session store non esplicitamente configurato e dipendenza dal valore `DATABASE_URL`
 Area coinvolta: Backend / Architettura
 Descrizione chiara del problema: Lo store di sessione (`connect-pg-simple`) viene attivato solo se `DATABASE_URL` è presente; non ci sono istruzioni per creare la tabella delle sessioni né fallback dettagliati.
@@ -56,6 +79,10 @@ Beneficio del miglioramento: Chiarezza, facilità di evoluzione verso SPA o mobi
 Impatto del refactor: Basso — rimontare router sotto `/api` e `/auth` è rapido.
 Priorità: 🟩 Bassa
 
+<!-- ✅ RISOLTO (parziale) ⚠️
+- `helmet()` è presente e nelle risposte si vede CSP impostata.
+⚠️ Mancano ancora: configurazione CSP esplicita nel codice (non solo default), `compression`, e caching ottimizzato per asset statici.
+-->
 8) Titolo del problema: Protezioni di sicurezza HTTP incomplete (CSP, cookie flags, compression)
 Area coinvolta: Backend / Sicurezza / Performance
 Descrizione chiara del problema: `helmet()` è presente ma non è configurata con una Content Security Policy adeguata; mancano `compression` e header per caching static assets ottimizzati.
@@ -64,6 +91,7 @@ Beneficio del miglioramento: Migliori security headers e percezione di performan
 Impatto del refactor: Basso — aggiustamenti di middleware e headers.
 Priorità: 🟨 Media
 
+<!-- ✅ RISOLTO: `req.session.regenerate()` su login (e register) in `routes/auth.js`. -->
 9) Titolo del problema: Mancanza di rigenerazione sessione dopo login (session fixation)
 Area coinvolta: Backend / Sicurezza
 Descrizione chiara del problema: Dopo l'autenticazione il codice non chiama `req.session.regenerate()`; la sessione esistente viene riutilizzata.
@@ -96,6 +124,7 @@ Beneficio del miglioramento: Maggiore affidabilità, possibilità di refactor si
 Impatto del refactor: Alto — aggiungere test richiede lavoro iniziale ma paga dividendi.
 Priorità: 🟨 Media
 
+<!-- ✅ RISOLTO: lo script `dev` non usa più `nodemon` (vedi `package.json`). -->
 13) Titolo del problema: Dipendenze e script dev non dichiarati
 Area coinvolta: Tooling / Developer Experience
 Descrizione chiara del problema: Lo script `dev` usa `nodemon` ma `nodemon` non è elencato in `devDependencies`.
