@@ -2,6 +2,7 @@ const http = require('http');
 const env = require('./config/env');
 const buildSessionMiddleware = require('./config/session');
 const createApp = require('./app');
+const db = require('../db');
 
 async function start() {
   const sessionMiddleware = await buildSessionMiddleware();

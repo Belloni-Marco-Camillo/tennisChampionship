@@ -1,19 +1,39 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../../db');
+const db = require('../../db'); // se questo file è in src/routes, questo path è giusto
 
-// API: /api/me => JSON only
 router.get('/me', async (req, res) => {
   try {
-    if (!req.session || !req.session.userId) return res.json({ loggedIn: false });
+    const userId = req.session?.userId;
 
-    const result = await db.query('SELECT id, name, email FROM users WHERE id = $1', [req.session.userId]);
-    if (!result.rows.length) return res.json({ loggedIn: false });
+    if (!userId) {
+      return res.json({ loggedIn: false });
+    }
 
-    return res.json({ loggedIn: true, user: result.rows[0] });
+    const rows = await db.query(
+      'SELECT id, nome, cognome, email, championship_owner FROM player WHERE id = ?',
+      [userId]
+    );
+
+    if (!rows.length) {
+      // sessione punta a utente che non esiste più
+      return res.json({ loggedIn: false });
+    }
+
+    const u = rows[0];
+    const name = `${u.nome} ${u.cognome}`.trim();
+
+    return res.json({
+      loggedIn: true,
+      user: {
+        id: u.id,
+        name,
+        email: u.email,
+        championship_owner: !!u.championship_owner
+      }
+    });
   } catch (err) {
-    console.error('API /api/me error:', err);
-    // Always respond JSON for the API
+    console.error('GET /api/me error:', err);
     return res.status(500).json({ loggedIn: false });
   }
 });
